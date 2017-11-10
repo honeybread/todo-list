@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import TodoList from './components/TodoList.jsx'
 import axios from 'axios';
+// import { lchmod } from 'fs';
 
 
 class App extends React.Component{
@@ -9,15 +10,20 @@ class App extends React.Component{
     constructor(props){
         super(props);
         this.state = {
-            newTodo: ''
+            newTodo: '',
+            allTodos:[]
         }
-        this.handleChange = this.handleChange.bind(this);
-        this.submitTodo = this.submitTodo.bind(this);
-        this.updateTodos = this.updateTodos.bind(this);
+        this.handleInputChange = this.handleInputChange.bind(this);
+        this.submitNewTodo = this.submitNewTodo.bind(this);
+        this.updateNewTodo = this.updateNewTodo.bind(this);
+        this.fetchAllTodos = this.fetchAllTodos.bind(this);
+        this.deleteTodo = this.deleteTodo.bind(this);
+        this.deleteTodoInDB = this.deleteTodoInDB.bind(this);
+        this.fetchAllTodos();
     }
 
 
-    updateTodos(){
+    updateNewTodo(){
         axios.post('/', {params:{ newTodo: this.state.newTodo}})
         .then(function(res) {
             console.log(res);
@@ -27,38 +33,63 @@ class App extends React.Component{
         })
     }
 
-    handleChange(e){  
-        this.setState({newTodo: e.target.value});
-        
+    fetchAllTodos(){
+        var that = this;
+        axios.get('/todos')
+        .then(function(res){
+            that.setState({allTodos: res.data});
+        })
+        .catch(function(err){
+            console.log(err);
+        })
     }
 
-    submitTodo(e){
+    handleInputChange(e){  
+        this.setState({newTodo: e.target.value});
+    }
+
+    submitNewTodo(e){
         e.preventDefault();
         this.inputForm.value= "";
-        alert("Submit clicked");
-        this.updateTodos();
+        this.updateNewTodo();
+        this.fetchAllTodos();
         
     }
 
-    componentDidUpdate(){
-        console.log("Handling change " + this.state.newTodo );
+    deleteTodoInDB(todoID){
+        var that = this;
+        axios.delete('/todos/' + (todoID))
+        .then(function(res){
+            console.log(res);
+            console.log("deleted the id",todoID);
+            that.fetchAllTodos();
+        })
+        .catch(function(err){
+            console.error(err);
+        })
+    }
+
+    deleteTodo(e, todoID){
+        console.log("came to delete todo", todoID)
+        e.preventDefault();
+        this.deleteTodoInDB(todoID);
     }
 
     render(){
         return(
         <div> 
-            <form onSubmit={this.submitTodo}>
-                <div>
-                    <label>Enter Todo:   
-                        <input id="enter-todo" type="text" onChange={this.handleChange} ref={(element)=>{this.inputForm = element}}/>
-                    </label>
-                </div>
-                <div>
-                    <input id="submit" type="submit" value="Submit"/>
-                </div>
-                
-            </form>
-            
+            <div>
+                <form onSubmit={this.submitNewTodo}>
+                    <div>
+                        <label>Enter Todo:   
+                            <input id="enter-todo" type="text" onChange={this.handleInputChange} ref={(element)=>{this.inputForm = element}}/>
+                        </label>
+                        <input id="submit" type="submit" value="Submit"/>
+                    </div>
+                    
+                </form>
+            </div>
+            <TodoList allTodos={this.state.allTodos.slice().reverse()} onDelete={this.deleteTodo}/>
         </div>);
     }
 }
